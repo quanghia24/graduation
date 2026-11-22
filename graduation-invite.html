@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en" class="no-motion">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nghia is graduating. Come take a picture with me.</title>
+<meta name="description" content="A short story about how I got here, and an invitation to take the last picture with me on graduation day.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+
+<!--
+  HOW THIS FILE IS ORGANIZED
+  1. <style>        Design tokens (colors, fonts) at the top, then one block per section type.
+  2. SITE (script)  ALL words, names, dates and photos live here. Edit this to update the site.
+  3. SCENES         Placeholder illustrations used until you add real photos.
+  4. RENDER         One function per chapter type. Turns SITE data into HTML.
+  5. MOTION         One function per chapter type. Scroll animations (GSAP + ScrollTrigger).
+
+  To add a chapter: copy an existing object in SITE.chapters and change its text.
+  To use a real photo: set photo.src to an image data URI (see notes in SITE).
+-->
+
+<style>
+/* ---------- 1. Design tokens ---------- */
+:root{
+  --paper:#E4E8DF;      /* album page */
+  --ink:#1F2B3A;        /* headings and text */
+  --ink-soft:#4A5666;   /* body text */
+  --print:#FBFBF7;      /* polaroid / card paper (stays light in dark mode, like real prints) */
+  --print-ink:#2A2F36;  /* text written on prints */
+  --gold:#E3A23B;       /* tassel gold: tape, progress, bus */
+  --pin:#C4473C;        /* red: stamps, map pins */
+  --line:rgba(31,43,58,.16);
+  --shadow:0 1px 1px rgba(31,43,58,.14), 0 20px 32px -18px rgba(31,43,58,.55);
+  --font:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --pen:"Nanum Pen Script", "Segoe Print", "Bradley Hand", cursive;
+  --gutter:clamp(1.25rem, 5vw, 3rem);
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top, 0px);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#18211C; --ink:#E7EBE3; --ink-soft:#AAB4AA;
+    --print:#ECEDE6; --line:rgba(231,235,227,.14);
+    --shadow:0 1px 1px rgba(0,0,0,.4), 0 22px 36px -16px rgba(0,0,0,.85);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#18211C; --ink:#E7EBE3; --ink-soft:#AAB4AA;
+  --print:#ECEDE6; --line:rgba(231,235,227,.14);
+  --shadow:0 1px 1px rgba(0,0,0,.4), 0 22px 36px -16px rgba(0,0,0,.85);
+  color-scheme:dark;
+}
+html{ scroll-padding-top:env(safe-area-inset-top, 0px); }
+*,*::before,*::after{ box-sizing:inherit; }
+body{
+  margin:0; background-color:var(--paper); color:var(--ink);
+  background-image:radial-gradient(var(--line) 1px, transparent 1.3px);
+  background-size:22px 22px;
+  font-family:var(--font); font-size:1.125rem; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+main{ overflow-x:clip; }
+h1,h2,h3{ margin:0; font-weight:800; letter-spacing:-.02em; text-wrap:balance; }
+h2{ font-size:clamp(2rem, 4.6vw, 3.4rem); line-height:1.04; }
+p{ margin:0; }
+a{ color:inherit; }
+:focus-visible{ outline:3px solid var(--gold); outline-offset:3px; border-radius:4px; }
+
+/* ---------- Shared: chapter layout ---------- */
+.chapter{ position:relative; padding:clamp(5rem, 14vh, 9rem) var(--gutter); }
+.chapter-inner{
+  max-width:1120px; margin:0 auto; display:grid; gap:clamp(2rem, 5vw, 4rem);
+  align-items:center; grid-template-columns:1fr;
+}
+@media (min-width:780px){
+  .chapter-inner.two{ grid-template-columns:1fr 1fr; }
+  .right .chapter-inner.two > .chapter-text{ order:2; }
+}
+.chapter-text{ max-width:31rem; display:grid; gap:1rem; }
+.chapter-text p{ color:var(--ink-soft); }
+.when{ font-family:var(--pen); font-size:1.9rem; line-height:1; color:var(--ink-soft); }
+.pinned{ min-height:100svh; display:grid; align-items:center; padding-block:clamp(2rem, 6vh, 4rem); }
+
+/* ---------- Shared: polaroid ---------- */
+.polaroid{
+  --pw:clamp(230px, 30vw, 340px);
+  position:relative; margin:0; width:var(--pw);
+  background:var(--print); padding:12px 12px 0;
+  box-shadow:var(--shadow); rotate:var(--r, -3deg);
+}
+.polaroid .photo{ position:relative; aspect-ratio:1; overflow:hidden; background:#4A4D45; }
+.polaroid .photo > svg, .polaroid .photo > img{ display:block; width:100%; height:100%; object-fit:cover; }
+.polaroid .develop{
+  position:absolute; inset:0; pointer-events:none; opacity:0;
+  background:radial-gradient(circle at 40% 35%, #6A6E63, #3E413A 75%);
+}
+.polaroid figcaption{
+  font-family:var(--pen); font-size:1.7rem; line-height:1.05; color:var(--print-ink);
+  text-align:center; padding:.55rem .25rem .95rem;
+}
+.tape{
+  position:absolute; top:-13px; left:50%; translate:-50% 0; rotate:4deg;
+  width:86px; height:26px; background:rgba(227,162,59,.55);
+}
+.frame{ display:grid; place-items:center; }
+
+/* ---------- Hero ---------- */
+.hero{ min-height:100svh; display:grid; align-items:center; padding:clamp(3rem, 8vh, 5rem) var(--gutter); }
+.hero .chapter-inner{ gap:clamp(2.5rem, 6vw, 5rem); }
+.hero h1{ font-size:clamp(3.2rem, 10.5vw, 8rem); line-height:.9; letter-spacing:-.04em; }
+.hero .lede{ font-size:clamp(1.15rem, 1.8vw, 1.35rem); color:var(--ink-soft); max-width:28rem; }
+.hero-links{ display:flex; flex-wrap:wrap; gap:1.25rem 2rem; align-items:center; margin-top:.5rem; }
+.scroll-cue{ font-family:var(--pen); font-size:1.8rem; display:inline-flex; gap:.6rem; align-items:center; }
+.scroll-cue::after{ content:""; width:2px; height:34px; background:var(--ink); animation:cue 1.8s ease-in-out infinite; transform-origin:top; }
+@keyframes cue{ 0%{transform:scaleY(0)} 50%{transform:scaleY(1)} 100%{transform:scaleY(0); transform-origin:bottom} }
+.skip{ font-size:1rem; color:var(--ink-soft); text-underline-offset:4px; }
+.hero .polaroid{ --pw:clamp(240px, 34vw, 400px); }
+
+/* ---------- Journey (map) ---------- */
+.map{ width:100%; max-width:620px; justify-self:center; overflow:visible; }
+.map .hill{ fill:none; stroke:var(--line); stroke-width:2; }
+.map .river{ fill:none; stroke:#8DB7CC; stroke-width:5; stroke-linecap:round; opacity:.7; }
+.map .route{ fill:none; stroke:var(--ink); stroke-width:3.5; stroke-linecap:round; stroke-dasharray:1 9; }
+.map .pin-dot{ fill:var(--pin); }
+.map .pin-ring{ fill:none; stroke:var(--pin); stroke-width:2; opacity:.35; }
+.map .city{ fill:var(--ink); font:700 15px var(--font); }
+.map .note{ fill:var(--ink-soft); font:22px var(--pen); }
+
+/* ---------- Stamp (failing) ---------- */
+.papers{ position:relative; height:clamp(320px, 46vw, 420px); }
+.exam{
+  position:absolute; width:min(300px, 72vw); aspect-ratio:.78; background:var(--print);
+  box-shadow:var(--shadow); padding:1.1rem 1.2rem; color:var(--print-ink);
+  background-image:repeating-linear-gradient(transparent 0 27px, rgba(63,110,140,.22) 27px 28px);
+  background-position:0 64px; background-repeat:no-repeat;
+}
+.exam:nth-child(1){ left:0; top:0; rotate:-6deg; }
+.exam:nth-child(2){ left:clamp(70px, 14vw, 170px); top:clamp(40px, 6vw, 70px); rotate:5deg; }
+.exam-head{ display:flex; justify-content:space-between; gap:1rem; font-family:var(--pen); font-size:1.5rem; line-height:1; }
+.stamp{
+  position:absolute; right:14%; bottom:16%; rotate:-12deg;
+  font:800 clamp(4.5rem, 9vw, 6.5rem)/1 var(--font); color:var(--pin);
+  border:6px solid var(--pin); border-radius:14px; padding:0 .25em .05em;
+  opacity:.88;
+}
+
+/* ---------- Spread (groups of photos) ---------- */
+.spread{
+  position:relative; max-width:1120px; margin:clamp(2.5rem, 6vh, 4rem) auto 0;
+  display:flex; flex-wrap:wrap; justify-content:center; gap:clamp(1.25rem, 3.5vw, 2.75rem);
+}
+.spread .polaroid{ --pw:clamp(150px, 25vw, 280px); }
+.spread.many .polaroid{ --pw:clamp(140px, 21vw, 240px); }
+.spread .polaroid figcaption{ font-size:clamp(1.3rem, 2.4vw, 1.7rem); }
+
+/* ---------- Flip (love) ---------- */
+.flip{ perspective:1400px; justify-self:center; }
+.flip-inner{ position:relative; transform-style:preserve-3d; }
+.flip-face{ backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+.flip .back{
+  position:absolute; inset:0; transform:rotateY(180deg); rotate:3deg;
+  background:var(--print); box-shadow:var(--shadow);
+  display:grid; place-items:center; padding:2rem;
+}
+.flip .note{ font-family:var(--pen); font-size:clamp(1.9rem, 3vw, 2.4rem); line-height:1.1; color:var(--print-ink); }
+.flip .note svg{ display:block; margin:0 auto 1rem; }
+.no-motion .flip-inner{ transform-style:flat; display:grid; gap:1.5rem; }
+.no-motion .flip .back{ position:relative; transform:none; min-height:220px; }
+
+/* ---------- Jobs (badges) ---------- */
+.badge-stack{ position:relative; height:clamp(300px, 40vw, 360px); justify-self:center; width:min(380px, 88vw); }
+.badge{
+  position:absolute; left:calc(var(--i) * 22px); top:calc(var(--i) * 62px);
+  width:min(320px, 78vw); background:var(--print); color:var(--print-ink);
+  border-radius:16px; box-shadow:var(--shadow); padding:2.1rem 1.4rem 1.2rem;
+  rotate:calc(var(--i) * 3deg - 3deg); border-top:10px solid var(--c, var(--gold));
+}
+.badge::before{ content:""; position:absolute; top:10px; left:50%; translate:-50% 0; width:46px; height:9px; border-radius:9px; background:var(--paper); box-shadow:inset 0 1px 2px rgba(0,0,0,.25); }
+.badge-row{ display:flex; gap:1rem; align-items:center; }
+.badge svg{ flex:none; width:44px; height:44px; stroke:var(--print-ink); fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+.badge h3{ font-size:1.4rem; line-height:1.1; }
+.badge p{ font-size:1rem; color:#5A6070; }
+.badge .badge-note{ font-family:var(--pen); font-size:1.5rem; color:var(--print-ink); margin-top:.6rem; line-height:1.05; }
+.progress{ display:grid; gap:.5rem; max-width:31rem; }
+.progress span{ font-family:var(--pen); font-size:1.6rem; line-height:1; }
+.bar{ height:12px; border-radius:12px; background:var(--line); overflow:hidden; }
+.bar i{ display:block; height:100%; background:var(--gold); transform-origin:left; }
+
+/* ---------- Finale (collage + empty frame) ---------- */
+.finale{ min-height:100svh; display:grid; place-items:center; gap:1.5rem; padding:clamp(1.5rem, 4vh, 3rem) var(--gutter); }
+.collage{ position:relative; width:min(94vw, 780px); height:min(58svh, 520px); }
+.collage .thumb{
+  position:absolute; left:var(--x); top:var(--y); translate:-50% -50%;
+  --pw:clamp(70px, 12vw, 124px); padding:6px 6px 0;
+}
+.collage .thumb figcaption{ padding:0; height:16px; }
+.collage .empty{
+  position:absolute; left:50%; top:50%; translate:-50% -50%; z-index:2;
+  --pw:clamp(160px, 26vw, 240px); --r:2deg;
+}
+.empty .photo{
+  background:#E7E8E0; display:grid; place-items:center;
+  outline:3px dashed #8C9188; outline-offset:-14px;
+  font-family:var(--pen); font-size:clamp(3rem, 6vw, 4.2rem); color:var(--print-ink);
+}
+.finale h2{ text-align:center; max-width:26ch; }
+
+/* ---------- Details ---------- */
+.details{ padding:clamp(4rem, 12vh, 8rem) var(--gutter) clamp(3rem, 8vh, 5rem); }
+.ticket{
+  max-width:760px; margin:0 auto; background:var(--print); color:var(--print-ink);
+  box-shadow:var(--shadow); padding:clamp(1.5rem, 5vw, 3rem); rotate:-.6deg; position:relative;
+}
+.ticket h2{ font-size:clamp(1.9rem, 4vw, 2.8rem); margin-bottom:1.5rem; }
+.facts{ display:grid; gap:1.1rem; margin:0 0 2rem; }
+.facts div{ display:grid; grid-template-columns:7rem 1fr; gap:1rem; align-items:baseline; padding-top:1rem; border-top:1px solid rgba(42,47,54,.14); }
+.facts dt{ font-family:var(--pen); font-size:1.7rem; line-height:1; color:#5A6070; }
+.facts dd{ margin:0; font-size:clamp(1.1rem, 2.2vw, 1.35rem); font-weight:600; line-height:1.35; }
+.facts dd small{ display:block; font-weight:400; font-size:1rem; color:#5A6070; }
+.facts dd a{ font-weight:400; font-size:1rem; text-underline-offset:3px; }
+@media (max-width:520px){ .facts div{ grid-template-columns:1fr; gap:.25rem; } }
+.actions{ display:flex; flex-wrap:wrap; gap:.75rem; }
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; min-height:48px;
+  padding:.7rem 1.4rem; border-radius:999px; font:600 1rem var(--font); text-decoration:none;
+  border:2px solid #1F2B3A; transition:transform .15s ease;
+}
+.btn:hover{ transform:translateY(-2px); }
+.btn.primary{ background:#1F2B3A; color:#FBFBF7; }
+.btn.secondary{ background:transparent; color:#1F2B3A; }
+footer{ text-align:center; padding:2rem var(--gutter) 3rem; font-family:var(--pen); font-size:1.6rem; color:var(--ink-soft); }
+
+@media (prefers-reduced-motion: reduce){
+  .scroll-cue::after{ animation:none; }
+  .btn{ transition:none; }
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+
+<!-- Animation library (pinned versions). If it fails to load, the page still shows every chapter without motion. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<script>
+/* =====================================================================
+  2. SITE CONTENT: edit everything here
+  ---------------------------------------------------------------------
+  photo: { scene: "study" }      → uses a built-in illustration
+  photo: { src: "data:image/jpeg;base64,..." , alt: "..." }
+                                → uses your real photo (embed as data URI
+                                  so it works once published)
+  Chapter types: journey, stamp, photo, spread, flip, jobs
+   ===================================================================== */
+const SITE = {
+  person: { name: "Quang Nghia", short: "Nghia", email: "nghiatruong1.dev@gmail.com" },
+
+  hero: {
+    lede: "Before I tell you where and when, let me show you how I got here.",
+    photo: { scene: "home", alt: "A small house with a tree in Quang Nam" },
+    caption: "Quang Nam, where it all started",
+  },
+
+  chapters: [
+    {
+      type: "journey",
+      when: "Fall 2020",
+      title: "I left Quang Nam with one suitcase and a big plan.",
+      text: "20 hours on a bus to Ho Chi Minh City, where nobody knew my name and the campus felt enormous.",
+      from: "Quang Nam", to: "Ho Chi Minh City", travelNote: "20 hours by bus",
+    },
+    {
+      type: "stamp",
+      when: "Spring 2021",
+      title: "The plan did not go well.",
+      text: "Calculus beat me. Then physics beat me. But I guess it's not the end of the world.",
+      papers: [
+        { subject: "Calculus I", grade: "C" },
+        { subject: "Physisc I", grade: "C-" },
+      ],
+    },
+    {
+      type: "photo", side: "left",
+      when: "Summer 2021",
+      title: "Then Minh sat down next to me.",
+      text: "He explained the same physics problem many time without sighing once. I passed the exam.",
+      photo: { scene: "study", alt: "Two students studying at a desk" },
+      caption: "Minh, my fucking hero",
+    },
+    {
+      type: "photo", side: "right",
+      when: "Summer 2021",
+      title: "'Shady' dragged me into badminton.",
+      text: "I was terrible at it. We keep playing every week, I forgot about exams completely.",
+      photo: { src: "photos/badminton.jpg", alt: "Two friends playing badminton on an indoor court" },
+      caption: "5am at the course with a dream",
+    },
+    {
+      type: "spread",
+      when: "Fall 2021",
+      title: "The study table kept getting bigger.",
+      text: "Thanh with his endless motivation, Tuyen with the laughing, and Thinh brought questions none of us could answer. We got each other through every finals week.",
+      items: [
+        { photo: { scene: "group", alt: "Four friends at a library table" }, caption: "Library, 6th floor" },
+        { photo: { src: "photos/late.jpg", alt: "Studying late at night" }, caption: "Exam week, 2 a.m." },
+        { photo: { src: "photos/passed.jpg", alt: "Friends celebrating" }, caption: "We all passed" },
+      ],
+    },
+    {
+      type: "flip",
+      when: "Spring 2022",
+      title: "And then there was her.",
+      text: "Gathering all my confident and say hi to her after was the best decision I have ever made.",
+      photo: { src: "photos/nhi_nghia.jpg", alt: "Two people sitting together under the stars" },
+      caption: "my love",
+      note: "Thank you for always choosing to stay and believing in me.",
+    },
+    {
+      type: "spread", many: true,
+      when: "Spring 2025",
+      title: "The idiots took on the road.",
+      text: "The five friends took a second to decide they wanted to go to Da Lat to celebrate new year.",
+      items: [
+        { photo: { src: "photos/bike.jpg", alt: "A sleeper bus climbing a pine-covered mountain pass" }, caption: "Day 1" },
+        { photo: { src: "photos/cafe.jpg", alt: "Coffee on a wooden balcony with a mountain view above the clouds" }, caption: "The cafe" },
+        { photo: { src: "photos/turbine.jpg", alt: "Wind turbines on a green hill under clouds" }, caption: "Cool wind turbine" },
+        { photo: { src: "photos/cold_weather.jpg", alt: "Friends in jackets warming up around a campfire" }, caption: "Cold weather" },
+      ],
+    },
+    {
+      type: "jobs",
+      when: "2022 to now",
+      title: "Meanwhile, I was working.",
+      text: "I finally got a j*b.",
+      progressLabel: "Degree progress",
+      jobs: [
+        { role: "SWE", place: "Bean There Café", when: "2022", icon: "cup", color: "#B9533F" },
+        { role: "SWE", place: "Harbor City University", when: "2023", icon: "book", color: "#3F6E8C",
+          note: "Yes, the one who failed calculus." },
+        { role: "SWE", place: "G******t", when: "2026 to now", icon: "chart", color: "#E3A23B" },
+      ],
+    },
+  ],
+
+  finale: {
+    title: "None of this happened alone. Come take the last picture with me.",
+    frameLabel: "You",
+    frameCaption: "It all works out I guess",
+    photo: { src: "photos/me2.jpg", alt: "Me in my graduation gown" }
+  },
+
+  event: {
+    heading: "Graduation photo day",
+    dateLabel: "Saturday, June 28, 2026",
+    timeLabel: "9:00 to 11:30 a.m.",
+    start: "2026-11-28T09:00", end: "2026-11-28T11:30",
+    timezone: "Asia/Ho_Chi_Minh",
+    place: "A2 Library",
+    address: "268 Đ. Lý Thường Kiệt, Diên Hồng, Hồ Chí Minh, Vietnam",
+    mapUrl: "https://maps.app.goo.gl/jnpahb3ARx2eEDdd6", // leave empty to search the address on Google Maps
+    bring: "Just yourself. Flowers and silly props are welcome.",
+    rsvpSubject: "I'll be at your graduation photos!",
+  },
+
+  footer: "Made by Quanghia. Class of 2026.",
+};
+
+/* =====================================================================
+  3. SCENES: placeholder illustrations (200 × 200)
+   ===================================================================== */
+const SKIN = ["#F1CBA5", "#D9A57B", "#A8724D", "#7A4E33"];
+const HAIR = ["#2A1E17", "#4A3020", "#1E1612", "#6B4A2E"];
+const SHIRT = ["#3F6E8C", "#D6844A", "#E3A23B", "#7C9A5B", "#B9533F", "#6F5B8E"];
+const fig = (x, y, s, i, j) =>
+  `<g transform="translate(${x} ${y}) scale(${s})"><rect x="-15" y="12" width="30" height="44" rx="13" fill="${SHIRT[j % 6]}"/><circle r="12" fill="${SKIN[i % 4]}"/><path d="M-12.6 2 A12.6 12.6 0 0 1 12.6 2 Q3 -4 -12.6 2Z" fill="${HAIR[i % 4]}"/></g>`;
+const stars = (n = 14) => Array.from({ length: n }, (_, i) =>
+  `<circle cx="${(i * 53 + 11) % 200}" cy="${(i * 37) % 86 + 8}" r="${1 + (i % 3) * 0.5}" fill="#F7E2B5" opacity=".8"/>`).join("");
+const sky = c => `<rect width="200" height="200" fill="${c}"/>`;
+
+const SCENES = {
+  home: () => sky("#A9CCDD") + `<circle cx="152" cy="48" r="18" fill="#F3C04A"/>
+    <path d="M0 140 Q60 120 120 138 T200 132 V200 H0Z" fill="#86AE6E"/>
+    <rect x="52" y="104" width="70" height="52" fill="#F1E3CF"/><path d="M44 106 L87 72 L130 106Z" fill="#B9533F"/>
+    <rect x="80" y="126" width="16" height="30" fill="#7A5236"/>
+    <rect x="58" y="116" width="13" height="13" fill="#A9CCDD"/><rect x="104" y="116" width="13" height="13" fill="#A9CCDD"/>
+    <rect x="160" y="118" width="6" height="34" fill="#7A5236"/><circle cx="163" cy="110" r="19" fill="#5F8C4F"/>`,
+
+  study: () => sky("#DCCFB8") + `<rect x="124" y="22" width="56" height="46" fill="#A9CCDD" stroke="#F1E3CF" stroke-width="4"/>
+    <path d="M152 22V68M124 45H180" stroke="#F1E3CF" stroke-width="3"/>
+    ${fig(66, 96, 1.3, 1, 0)}${fig(136, 98, 1.3, 0, 1)}
+    <rect x="14" y="146" width="172" height="12" fill="#A97B52"/>
+    <rect x="24" y="158" width="8" height="42" fill="#7A5236"/><rect x="168" y="158" width="8" height="42" fill="#7A5236"/>
+    <rect x="76" y="136" width="48" height="10" rx="2" fill="#FBFBF7"/><path d="M100 136v10" stroke="#C9C2B4"/>
+    <path d="M30 146V112" stroke="#2F3E5A" stroke-width="3"/><path d="M20 112h22l-5-14h-12z" fill="#E3A23B"/>`,
+
+  sport: () => sky("#A9CCDD") + `<circle cx="34" cy="36" r="14" fill="#F3C04A"/>
+    <rect y="118" width="200" height="82" fill="#86AE6E"/><path d="M0 152H200" stroke="#E9F2E1" stroke-width="2" opacity=".7"/>
+    <path d="M150 118V84H196V118" stroke="#FBFBF7" stroke-width="3" fill="none"/>
+    ${fig(62, 84, 1.25, 2, 2)}${fig(122, 88, 1.2, 0, 0)}
+    <circle cx="96" cy="166" r="10" fill="#FBFBF7"/><path d="M96 161l4.5 3.3-1.7 5.2h-5.6l-1.7-5.2z" fill="#2F3E5A"/>`,
+
+  group: () => {
+    let shelf = "";
+    for (let x = 6, k = 0; x < 194; x += 9, k++) shelf += `<rect x="${x}" y="${8 + (k % 3) * 3}" width="7" height="${18 - (k % 3) * 3}" fill="${SHIRT[k % 6]}"/>`;
+    return sky("#E9DCC4") + shelf + `<rect y="26" width="200" height="6" fill="#A97B52"/>
+      ${fig(36, 92, 1.05, 3, 4)}${fig(80, 88, 1.05, 0, 0)}${fig(124, 90, 1.05, 1, 3)}${fig(166, 92, 1.05, 2, 5)}
+      <rect y="140" width="200" height="60" fill="#A97B52"/>
+      <rect x="40" y="131" width="34" height="9" fill="#3F6E8C"/><rect x="98" y="130" width="40" height="10" fill="#FBFBF7"/>
+      <rect x="156" y="127" width="12" height="13" rx="2" fill="#B9533F"/>`;
+  },
+
+  cram: () => sky("#2E4466") + `<rect x="20" y="20" width="60" height="50" fill="#1F2F4A" stroke="#4A5C7A" stroke-width="4"/>
+    <circle cx="58" cy="38" r="9" fill="#F7E2B5"/><circle cx="160" cy="120" r="72" fill="#F3C04A" opacity=".16"/>
+    ${fig(100, 92, 1.3, 3, 1)}
+    <rect x="10" y="148" width="180" height="52" fill="#7A5236"/>
+    <rect x="40" y="138" width="30" height="12" fill="#FBFBF7" transform="rotate(-8 55 144)"/>
+    <rect x="112" y="140" width="34" height="10" fill="#FBFBF7"/>
+    <path d="M170 148V110" stroke="#C9C2B4" stroke-width="3"/><path d="M158 110h24l-6-14h-12z" fill="#E3A23B"/>
+    <rect x="24" y="134" width="11" height="14" rx="2" fill="#B9533F"/>`,
+
+  celebrate: () => {
+    let flags = "", confetti = "";
+    for (let k = 0; k < 9; k++) {
+      const t = (k + 0.5) / 9, x = 10 + 180 * t, y = 30 + 60 * t * (1 - t);
+      flags += `<path d="M${x - 7} ${y} L${x + 7} ${y} L${x} ${y + 15}Z" fill="${SHIRT[k % 6]}"/>`;
+    }
+    for (let k = 0; k < 22; k++) confetti += `<rect x="${(k * 47) % 196}" y="${(k * 29) % 70 + 50}" width="4" height="7" fill="${SHIRT[k % 6]}" transform="rotate(${k * 33} ${(k * 47) % 196} ${(k * 29) % 70 + 50})"/>`;
+    return sky("#F2C38B") + `<path d="M10 30 Q100 90 190 30" stroke="#2F3E5A" fill="none" stroke-width="1.5"/>` + flags + confetti +
+      `${fig(50, 104, 1.1, 0, 3)}${fig(100, 98, 1.15, 2, 0)}${fig(150, 104, 1.1, 1, 4)}
+      <rect y="166" width="200" height="34" fill="#D9B98A"/>`;
+  },
+
+  love: () => sky("#2E4466") + stars() + `<circle cx="160" cy="40" r="14" fill="#F7E2B5"/>
+    ${fig(86, 104, 1.35, 1, 5)}${fig(118, 102, 1.4, 2, 2)}
+    <rect x="30" y="160" width="140" height="8" fill="#A97B52"/>
+    <path d="M101 74C87 62 79 52 91 46C97 43 101 48 101 52C101 48 105 43 111 46C123 52 115 62 101 74Z" fill="#E36B6B"/>
+    <rect y="180" width="200" height="20" fill="#24375A"/>`,
+
+  road: () => sky("#F2C38B") + `<circle cx="100" cy="96" r="30" fill="#F7D98A"/>
+    <path d="M0 110 Q50 96 100 108 T200 104 V200 H0Z" fill="#9AA77E"/>
+    <path d="M90 110 L110 110 L172 200 L28 200Z" fill="#5A5F66"/>
+    <path d="M100 118V200" stroke="#F3C04A" stroke-width="3" stroke-dasharray="8 8"/>
+    <g transform="translate(100 166)"><rect x="-34" y="-14" width="68" height="22" rx="6" fill="#3F6E8C"/>
+    <path d="M-20 -14L-12 -28H12L20 -14Z" fill="#3F6E8C"/><path d="M-14 -15L-9 -25H9L14 -15Z" fill="#BFD8E4"/>
+    <circle cx="-20" cy="9" r="6" fill="#2A2F36"/><circle cx="20" cy="9" r="6" fill="#2A2F36"/></g>`,
+
+  beach: () => sky("#A9CCDD") + `<circle cx="150" cy="44" r="18" fill="#F3C04A"/>
+    <rect y="100" width="200" height="50" fill="#4F8FB0"/>
+    <path d="M0 106Q25 100 50 106T100 106T150 106T200 106" stroke="#D7ECF3" stroke-width="2" fill="none"/>
+    <path d="M0 140Q100 128 200 142V200H0Z" fill="#EBD3A0"/>
+    <path d="M60 160V112" stroke="#7A5236" stroke-width="3"/><path d="M28 114A32 22 0 0 1 92 114Z" fill="#B9533F"/>
+    ${fig(130, 130, 0.9, 0, 2)}${fig(158, 132, 0.9, 2, 0)}`,
+
+  mountain: () => sky("#BFD8E4") + `<path d="M-10 170L60 70L130 170Z" fill="#6E8A9E"/>
+    <path d="M60 70L44 93L54 90L62 98L76 92Z" fill="#FBFBF7"/>
+    <path d="M70 170L140 84L210 170Z" fill="#8FA7B4"/><path d="M140 84L127 100L138 97L146 104L153 100Z" fill="#FBFBF7"/>
+    <rect y="160" width="200" height="40" fill="#86AE6E"/>${fig(100, 128, 0.75, 1, 4)}`,
+
+  camp: () => sky("#24375A") + stars(16) + `<rect y="160" width="200" height="40" fill="#1C2B45"/>
+    <circle cx="150" cy="148" r="34" fill="#F3C04A" opacity=".18"/>
+    <path d="M30 162L75 90L120 162Z" fill="#E3A23B"/><path d="M75 90L66 162H84Z" fill="#9C6B22"/>
+    <rect x="136" y="158" width="28" height="6" rx="3" fill="#7A5236" transform="rotate(12 150 161)"/>
+    <path d="M150 158q-14-20 0-40q14 20 0 40z" fill="#F3C04A"/><path d="M150 158q-7-10 0-20q7 10 0 20z" fill="#E36B3B"/>`,
+
+  /* Indoor badminton court */
+  badminton: () => sky("#D5DDE0") + `
+    <rect x="0" y="0" width="200" height="14" fill="#B9C6CB"/>
+    <circle cx="40" cy="14" r="5" fill="#FFF6D8"/><circle cx="100" cy="14" r="5" fill="#FFF6D8"/><circle cx="160" cy="14" r="5" fill="#FFF6D8"/>
+    <rect y="150" width="200" height="50" fill="#3E7D5E"/>
+    <path d="M0 154H200M20 200L34 154M180 200L166 154" stroke="#FBFBF7" stroke-width="2" opacity=".85"/>
+    <path d="M42 108 C70 40 120 30 132 56" stroke="#2A2F36" stroke-width="1.5" stroke-dasharray="3 5" fill="none" opacity=".5"/>
+    ${fig(46, 100, 1.15, 1, 3)}${fig(156, 102, 1.15, 0, 4)}
+    <path d="M62 126L74 98" stroke="#2A2F36" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="78" cy="88" rx="7" ry="11" transform="rotate(22 78 88)" fill="rgba(251,251,247,.5)" stroke="#B9533F" stroke-width="2.5"/>
+    <path d="M140 128L126 104" stroke="#2A2F36" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="121" cy="94" rx="7" ry="11" transform="rotate(-25 121 94)" fill="rgba(251,251,247,.5)" stroke="#3F6E8C" stroke-width="2.5"/>
+    <rect x="98" y="104" width="4" height="56" fill="#5A5F66"/>
+    <rect x="94" y="108" width="12" height="40" fill="rgba(42,47,54,.12)"/>
+    <path d="M94 116H106M94 124H106M94 132H106M94 140H106M98 108V148M102 108V148" stroke="#2A2F36" stroke-width=".8" opacity=".5"/>
+    <rect x="93" y="106" width="14" height="4" fill="#FBFBF7"/>
+    <g transform="translate(132 56) rotate(-30)"><path d="M0 0L13-6L13 6Z" fill="#FBFBF7" stroke="#C9C2B4"/><circle r="3.5" fill="#E3A23B"/></g>`,
+
+  /* Da Lat 1: sleeper bus winding up the mountain pass through pines */
+  dalatBus: () => sky("#CFE0E6") + `
+    <path d="M0 92Q50 60 100 82T200 70V200H0Z" fill="#8FAE9A"/>
+    <path d="M0 122Q60 96 120 116T200 106V200H0Z" fill="#6E9580"/>
+    ${pine(20, 104, 34, "#3F6B55")}${pine(46, 98, 28, "#3F6B55")}${pine(170, 92, 36, "#3F6B55")}${pine(188, 98, 26, "#3F6B55")}
+    <path d="M-10 196C60 190 150 172 120 150S60 128 120 112S210 106 210 100" stroke="#6B6F73" stroke-width="20" fill="none"/>
+    <path d="M-10 196C60 190 150 172 120 150S60 128 120 112S210 106 210 100" stroke="#F3C04A" stroke-width="1.5" stroke-dasharray="6 6" fill="none"/>
+    <g transform="translate(96 140) rotate(-6)">
+      <rect x="-30" y="-16" width="60" height="24" rx="6" fill="#F1E3CF"/>
+      <rect x="-30" y="-2" width="60" height="5" fill="#E3A23B"/>
+      <rect x="-24" y="-12" width="44" height="7" rx="2" fill="#2F3E5A"/><rect x="22" y="-12" width="6" height="11" rx="1" fill="#2F3E5A"/>
+      <circle cx="-17" cy="9" r="5" fill="#2A2F36"/><circle cx="17" cy="9" r="5" fill="#2A2F36"/></g>
+    ${pine(150, 200, 60, "#2F5D46")}${pine(24, 200, 48, "#2F5D46")}`,
+
+  /* Da Lat 2: coffee on a wooden balcony above the clouds */
+  dalatCafe: () => sky("#EAD9C6") + `
+    <circle cx="150" cy="46" r="16" fill="#F7D98A"/>
+    <path d="M-10 110L50 54L110 110Z" fill="#8FA7B4"/><path d="M70 110L140 62L210 110Z" fill="#7A93A3"/>
+    ${pine(30, 108, 22, "#56746A")}${pine(120, 106, 18, "#56746A")}${pine(176, 108, 24, "#56746A")}
+    <ellipse cx="60" cy="112" rx="80" ry="12" fill="#FBFBF7" opacity=".85"/>
+    <ellipse cx="160" cy="116" rx="70" ry="11" fill="#FBFBF7" opacity=".85"/>
+    <rect y="112" width="200" height="22" fill="#FBFBF7" opacity=".7"/>
+    <rect y="134" width="200" height="8" fill="#7A5236"/>
+    <path d="M18 142V200M66 142V200M114 142V200M162 142V200" stroke="#7A5236" stroke-width="6"/>
+    <rect y="176" width="200" height="24" fill="#A97B52"/>
+    <path d="M0 184H200M0 192H200" stroke="#7A5236" stroke-width="1" opacity=".5"/>
+    <path d="M80 112l3 22h14l3-22z" fill="rgba(251,251,247,.7)" stroke="#C9C2B4"/><path d="M81.5 118l1.8 15h13.4l1.8-15z" fill="#4A2E1E"/>
+    <path d="M118 116l2.5 18h12l2.5-18z" fill="rgba(251,251,247,.7)" stroke="#C9C2B4"/><path d="M119.4 121l1.6 12.5h11l1.6-12.5z" fill="#C89D6E"/>
+    <path d="M88 106c-3-4 3-6 0-10M126 110c-3-4 3-6 0-10" stroke="#FBFBF7" stroke-width="2" fill="none"/>`,
+
+  /* Da Lat 3: wind turbines on green hills under puffy clouds */
+  dalatWind: () => sky("#A9CCDD") + `
+    <g fill="#FBFBF7"><circle cx="40" cy="40" r="14"/><circle cx="58" cy="34" r="17"/><circle cx="76" cy="42" r="12"/><rect x="40" y="40" width="36" height="14"/>
+      <circle cx="146" cy="58" r="11"/><circle cx="162" cy="52" r="14"/><circle cx="178" cy="60" r="10"/><rect x="146" y="58" width="32" height="12"/></g>
+    <path d="M0 150Q60 118 120 140T200 128V200H0Z" fill="#86AE6E"/>
+    <path d="M0 176Q80 150 200 170V200H0Z" fill="#6E9A58"/>
+    ${turbine(70, 140, 74, 15)}${turbine(150, 134, 56, 70)}
+    ${fig(112, 152, .55, 2, 0)}`,
+
+  /* Da Lat 4: friends in jackets warming up around a campfire at night */
+  dalatFire: () => sky("#24375A") + stars(16) + `
+    ${pine(18, 160, 56, "#16263A")}${pine(48, 160, 44, "#16263A")}${pine(158, 160, 50, "#16263A")}${pine(188, 160, 60, "#16263A")}
+    <rect y="158" width="200" height="42" fill="#1C2B45"/>
+    <ellipse cx="100" cy="150" rx="70" ry="12" fill="#BFD8E4" opacity=".12"/>
+    <circle cx="100" cy="156" r="40" fill="#F3C04A" opacity=".1"/><circle cx="100" cy="156" r="24" fill="#F3C04A" opacity=".12"/>
+    ${fig(52, 118, 1, 1, 0)}${fig(148, 118, 1, 3, 4)}
+    <rect x="40" y="128" width="24" height="5" rx="2" fill="#E3A23B"/><rect x="136" y="128" width="24" height="5" rx="2" fill="#7C9A5B"/>
+    <circle cx="68" cy="112" r="3" fill="#FBFBF7" opacity=".5"/><circle cx="74" cy="108" r="2" fill="#FBFBF7" opacity=".35"/>
+    <rect x="84" y="168" width="34" height="6" rx="3" fill="#7A5236" transform="rotate(14 100 171)"/>
+    <rect x="82" y="168" width="34" height="6" rx="3" fill="#5E3E28" transform="rotate(-14 100 171)"/>
+    <path d="M100 168q-16-22 0-46q16 22 0 46z" fill="#F3C04A"/><path d="M100 168q-8-12 0-24q8 12 0 24z" fill="#E36B3B"/>`,
+};
+
+/* Scene helpers for the Da Lat set */
+function pine(x, y, h, c) {
+  return `<path d="M${x} ${y - h}L${x + h * .3} ${y - h * .45}L${x + h * .17} ${y - h * .45}L${x + h * .38} ${y}L${x - h * .38} ${y}L${x - h * .17} ${y - h * .45}L${x - h * .3} ${y - h * .45}Z" fill="${c}"/>`;
+}
+function turbine(x, groundY, h, angle) {
+  const hubY = groundY - h;
+  const blade = a => `<path d="M-2.4 0Q-2 -18 0 -${h * .5}Q2 -18 2.4 0Z" transform="rotate(${a})" fill="#FBFBF7" stroke="#C9D3D8" stroke-width=".6"/>`;
+  return `<path d="M${x - 2.5} ${groundY}L${x - 1.2} ${hubY}H${x + 1.2}L${x + 2.5} ${groundY}Z" fill="#FBFBF7" stroke="#C9D3D8" stroke-width=".6"/>
+    <g transform="translate(${x} ${hubY})">${blade(angle)}${blade(angle + 120)}${blade(angle + 240)}<circle r="3" fill="#E7EBEE" stroke="#C9D3D8"/></g>`;
+}
+
+const ICONS = {
+  cup: `<path d="M9 14h18v10a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8z"/><path d="M27 17h3a4 4 0 0 1 0 8h-3"/><path d="M14 5c-1.5 2 1.5 3 0 6M20 5c-1.5 2 1.5 3 0 6"/>`,
+  book: `<path d="M6 10c5-2 10-2 14 1v21c-4-3-9-3-14-1z"/><path d="M34 10c-5-2-10-2-14 1v21c4-3 9-3 14-1z"/>`,
+  chart: `<path d="M6 33h28"/><path d="M11 33V23M18 33V16M25 33V20M32 33V9"/>`,
+};
+
+/* =====================================================================
+  4. RENDER: one function per chapter type
+   ===================================================================== */
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function photoHTML(p = {}) {
+  if (p.src) return `<img src="${esc(p.src)}" alt="${esc(p.alt)}" loading="lazy">`;
+  const draw = SCENES[p.scene] || SCENES.home;
+  return `<svg viewBox="0 0 200 200" role="img" aria-label="${esc(p.alt)}" preserveAspectRatio="xMidYMid slice">${draw()}</svg>`;
+}
+function polaroid(photo, caption, { cls = "", r, tape = false } = {}) {
+  const style = r !== undefined ? ` style="--r:${r}deg"` : "";
+  return `<figure class="polaroid ${cls}"${style}>${tape ? '<span class="tape" aria-hidden="true"></span>' : ""}
+    <div class="photo">${photoHTML(photo)}<span class="develop" aria-hidden="true"></span></div>
+    ${caption !== undefined ? `<figcaption>${esc(caption)}</figcaption>` : ""}</figure>`;
+}
+const textBlock = c => `<div class="chapter-text">
+  ${c.when ? `<p class="when">${esc(c.when)}</p>` : ""}<h2>${esc(c.title)}</h2>${c.text ? `<p>${esc(c.text)}</p>` : ""}</div>`;
+const section = (c, cls, inner) => `<section class="chapter ${cls}" data-type="${c.type}">${inner}</section>`;
+
+const RENDER = {
+  journey: c => section(c, "pinned", `<div class="chapter-inner two">${textBlock(c)}
+    <svg class="map" viewBox="0 0 400 260" role="img" aria-label="Route from ${esc(c.from)} to ${esc(c.to)}">
+      <path class="hill" d="M0 238Q60 200 120 232T240 226T400 214"/>
+      <path class="hill" d="M10 40Q80 20 150 44T300 36"/>
+      <path class="river" d="M160 0C176 60 126 120 176 170S236 240 226 260"/>
+      <defs><mask id="routeMask" maskUnits="userSpaceOnUse" x="0" y="0" width="400" height="260">
+        <path class="route-reveal" d="M60 200C120 204 116 124 190 130S300 168 340 70" stroke="#fff" stroke-width="14" fill="none"/>
+      </mask></defs>
+      <path class="route" d="M60 200C120 204 116 124 190 130S300 168 340 70" mask="url(#routeMask)"/>
+      <g class="city-a"><circle class="pin-ring" cx="60" cy="200" r="13"/><circle class="pin-dot" cx="60" cy="200" r="6"/>
+        <text class="city" x="60" y="232" text-anchor="middle">${esc(c.from)}</text></g>
+      <g class="city-b"><circle class="pin-ring" cx="340" cy="70" r="13"/><circle class="pin-dot" cx="340" cy="70" r="6"/>
+        <text class="city" x="340" y="44" text-anchor="middle">${esc(c.to)}</text></g>
+      <text class="note travel-note" x="232" y="190">${esc(c.travelNote || "")}</text>
+      <g class="bus"><rect x="-17" y="-10" width="34" height="18" rx="5" fill="var(--gold)"/>
+        <rect x="-12" y="-6" width="7" height="6" rx="1" fill="#FBFBF7"/><rect x="-2" y="-6" width="7" height="6" rx="1" fill="#FBFBF7"/>
+        <rect x="8" y="-6" width="5" height="6" rx="1" fill="#FBFBF7"/>
+        <circle cx="-9" cy="9" r="4" fill="#2A2F36"/><circle cx="9" cy="9" r="4" fill="#2A2F36"/></g>
+    </svg></div>`),
+
+  stamp: c => section(c, "", `<div class="chapter-inner two">${textBlock(c)}
+    <div class="papers">${c.papers.map(p => `<div class="exam" role="img" aria-label="${esc(p.subject)} exam, grade ${esc(p.grade)}">
+      <div class="exam-head"><span>${esc(p.subject)}</span><span>${esc(SITE.person.short)}</span></div>
+      <span class="stamp" aria-hidden="true">${esc(p.grade)}</span></div>`).join("")}</div></div>`),
+
+  photo: c => section(c, c.side === "right" ? "right" : "left",
+    `<div class="chapter-inner two">${textBlock(c)}<div class="frame">${polaroid(c.photo, c.caption, { tape: true, r: c.side === "right" ? 3 : -3 })}</div></div>`),
+
+  spread: c => section(c, "", `<div class="chapter-inner">${textBlock(c)}</div>
+    <div class="spread${c.many ? " many" : ""}">${c.items.map((it, i) =>
+      polaroid(it.photo, it.caption, { r: (i % 2 ? 1 : -1) * (2 + (i % 3) * 1.5) })).join("")}</div>`),
+
+  flip: c => section(c, "pinned", `<div class="chapter-inner two">${textBlock(c)}
+    <div class="flip"><div class="flip-inner">
+      <div class="flip-face front">${polaroid(c.photo, c.caption, { r: -2 })}</div>
+      <div class="flip-face back"><p class="note">
+        <svg width="38" height="34" viewBox="0 0 38 34" aria-hidden="true"><path d="M19 32C6 22-2 12 6 5c5-4 11-1 13 4 2-5 8-8 13-4 8 7 0 17-13 27z" fill="#E36B6B"/></svg>
+        ${esc(c.note)}</p></div>
+    </div></div></div>`),
+
+  jobs: c => section(c, "pinned", `<div class="chapter-inner two">
+    <div style="display:grid;gap:2rem">${textBlock(c)}
+      <div class="progress"><span>${esc(c.progressLabel)}</span><div class="bar" role="presentation"><i></i></div></div></div>
+    <div class="badge-stack">${c.jobs.map((j, i) => `<article class="badge" style="--i:${i};--c:${j.color || "var(--gold)"}">
+      <div class="badge-row"><svg viewBox="0 0 40 40" aria-hidden="true">${ICONS[j.icon] || ICONS.chart}</svg>
+      <div><h3>${esc(j.role)}</h3><p>${esc(j.place)}, ${esc(j.when)}</p></div></div>
+      ${j.note ? `<p class="badge-note">${esc(j.note)}</p>` : ""}</article>`).join("")}</div></div>`),
+};
+
+function renderHero() {
+  const h = SITE.hero;
+  return `<header class="hero"><div class="chapter-inner two">
+    <div class="chapter-text"><h1>${esc(SITE.person.short)} is graduating.</h1>
+      <p class="lede">${esc(h.lede)}</p>
+      <div class="hero-links"><span class="scroll-cue">Scroll to start</span>
+        <a class="skip" href="#details">Skip to the date and place</a></div></div>
+    <div class="frame">${polaroid(h.photo, h.caption, { tape: true, r: -4, cls: "hero-photo" })}</div>
+  </div></header>`;
+}
+
+function renderFinale() {
+  const photos = [{ photo: SITE.hero.photo }];
+  SITE.chapters.forEach(c => {
+    if (c.photo) photos.push({ photo: c.photo });
+    (c.items || []).forEach(it => photos.push({ photo: it.photo }));
+  });
+  const n = photos.length;
+  const thumbs = photos.map((p, i) => {
+    const a = -Math.PI / 2 + (i / n) * Math.PI * 2;
+    const x = 50 + Math.cos(a) * 41, y = 50 + Math.sin(a) * 37;
+    return `<figure class="polaroid thumb" style="--x:${x.toFixed(1)}%;--y:${y.toFixed(1)}%;--r:${((i * 37) % 17) - 8}deg" aria-hidden="true">
+      <div class="photo">${photoHTML(p.photo)}</div><figcaption></figcaption></figure>`;
+  }).join("");
+  const f = SITE.finale;
+  return `<section class="finale" data-type="finale">
+    <div class="collage">${thumbs}
+      <figure class="polaroid empty"><div class="photo">${f.photo ? photoHTML(f.photo) : ""}<span class="frame-label">${esc(f.frameLabel)}</span></div><figcaption>${esc(f.frameCaption)}</figcaption></figure>
+    </div><h2>${esc(f.title)}</h2></section>`;
+}
+
+function renderDetails() {
+  const e = SITE.event;
+  const stamp = s => s.replace(/[-:]/g, "") + "00";
+  const cal = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+    `&text=${encodeURIComponent(`${SITE.person.short}’s graduation photos`)}` +
+    `&dates=${stamp(e.start)}/${stamp(e.end)}&ctz=${encodeURIComponent(e.timezone)}` +
+    `&location=${encodeURIComponent(`${e.place}, ${e.address}`)}` +
+    `&details=${encodeURIComponent(e.bring)}`;
+  const map = e.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${e.place}, ${e.address}`)}`;
+  const mail = `mailto:${SITE.person.email}?subject=${encodeURIComponent(e.rsvpSubject)}`;
+  return `<section class="details" id="details"><div class="ticket">
+    <h2>${esc(e.heading)}</h2>
+    <dl class="facts">
+      <div><dt>When</dt><dd>${esc(e.dateLabel)}<small>${esc(e.timeLabel)}</small></dd></div>
+      <div><dt>Where</dt><dd>${esc(e.place)}<small>${esc(e.address)}</small>
+        <a href="${map}" target="_blank" rel="noopener">Open in Maps</a></dd></div>
+      <div><dt>Bring</dt><dd>${esc(e.bring)}</dd></div>
+    </dl>
+    <div class="actions">
+      <a class="btn primary" href="${mail}" target="_blank" rel="noopener">Tell ${esc(SITE.person.short)} you’re coming</a>
+      <a class="btn secondary" href="${cal}" target="_blank" rel="noopener">Add to Google Calendar</a>
+    </div></div></section>
+    <footer>${esc(SITE.footer)}</footer>`;
+}
+
+function render() {
+  const body = SITE.chapters.map(c => (RENDER[c.type] ? RENDER[c.type](c) : "")).join("");
+  document.getElementById("app").innerHTML = renderHero() + body + renderFinale() + renderDetails();
+  placeBus(1); // static position: bus has arrived
+}
+
+function placeBus(p, sec = document) {
+  const path = sec.querySelector(".route-reveal"), bus = sec.querySelector(".bus");
+  if (!path || !bus) return;
+  const L = path.getTotalLength(), d = Math.max(0, Math.min(1, p)) * L;
+  const a = path.getPointAtLength(Math.max(0, d - 1)), b = path.getPointAtLength(Math.min(L, d + 1));
+  const pt = path.getPointAtLength(d);
+  const ang = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+  bus.setAttribute("transform", `translate(${pt.x} ${pt.y - 12}) rotate(${ang * 0.35})`);
+}
+
+/* =====================================================================
+   5. MOTION: one function per chapter type (skipped for reduced motion)
+   ===================================================================== */
+function develop(targets, trigger, start = "top 80%", end = "top 35%") {
+  const els = gsap.utils.toArray(targets);
+  els.forEach(fig => {
+    const st = { trigger, start, end, scrub: true };
+    gsap.fromTo(fig.querySelector(".develop"), { opacity: 1 }, { opacity: 0, ease: "none", scrollTrigger: st });
+    gsap.fromTo(fig.querySelector(".photo > svg, .photo > img"),
+      { filter: "grayscale(1) contrast(.7)" }, { filter: "grayscale(0) contrast(1)", ease: "none", scrollTrigger: { ...st } });
+  });
+}
+
+const MOTION = {
+  journey(sec) {
+    const reveal = sec.querySelector(".route-reveal");
+    const L = reveal.getTotalLength();
+    const prog = { p: 0 };
+    const tl = gsap.timeline({ scrollTrigger: { trigger: sec, start: "top top", end: "+=160%", pin: true, scrub: 0.6 } });
+    tl.fromTo(sec.querySelector(".map"), { scale: 1.35, rotation: -6 }, { scale: 1, rotation: 0, duration: 1, ease: "power2.out" })
+      .fromTo(prog, { p: 0 }, {
+        p: 1, duration: 3, ease: "none",
+        onUpdate() { reveal.style.strokeDasharray = L; reveal.style.strokeDashoffset = L * (1 - prog.p); placeBus(prog.p, sec); },
+      }, 0.4)
+      .from(sec.querySelector(".travel-note"), { opacity: 0, duration: .5 }, 1.8)
+      .from(sec.querySelector(".city-b"), { scale: 0, transformOrigin: "50% 50%", duration: .5, ease: "back.out(2)" }, 3.2);
+  },
+
+  stamp(sec) {
+    sec.querySelectorAll(".exam").forEach((paper, i) => {
+      gsap.from(paper, { y: 120, rotation: i ? 18 : -14, ease: "none",
+        scrollTrigger: { trigger: paper, start: "top 95%", end: "top 55%", scrub: true } });
+      gsap.fromTo(paper.querySelector(".stamp"),
+        { scale: 3.4, opacity: 0, rotation: -24 },
+        { scale: 1, opacity: .88, rotation: 0, duration: .32, ease: "back.out(2.2)",
+          scrollTrigger: { trigger: paper, start: `top ${50 - i * 6}%`, toggleActions: "play none none reverse" },
+          onComplete: () => gsap.fromTo(paper, { x: -6 }, { x: 0, duration: .4, ease: "elastic.out(1,.3)" }) });
+    });
+  },
+
+  photo(sec) {
+    const fig = sec.querySelector(".polaroid");
+    const dir = sec.classList.contains("right") ? 1 : -1;
+    gsap.from(fig, { x: dir * 180, y: 80, rotation: dir * 28, scale: .82, ease: "none",
+      scrollTrigger: { trigger: sec, start: "top 90%", end: "center 55%", scrub: true } });
+    develop(fig, sec, "top 60%", "center 40%");
+  },
+
+  spread(sec) {
+    const box = sec.querySelector(".spread");
+    const items = gsap.utils.toArray(box.querySelectorAll(".polaroid"));
+    gsap.from(items, {
+      x: (i, el) => box.offsetWidth / 2 - (el.offsetLeft + el.offsetWidth / 2),
+      y: (i, el) => box.offsetHeight / 2 - (el.offsetTop + el.offsetHeight / 2),
+      rotation: i => (i % 2 ? -1 : 1) * (10 + i * 4), scale: .9,
+      ease: "power1.inOut", stagger: .06,
+      scrollTrigger: { trigger: box, start: "top 85%", end: "center 50%", scrub: true, invalidateOnRefresh: true },
+    });
+    develop(items, box, "top 70%", "center 45%");
+  },
+
+  flip(sec) {
+    const inner = sec.querySelector(".flip-inner");
+    develop(sec.querySelector(".front .polaroid"), sec, "top 85%", "top 15%");
+    gsap.timeline({ scrollTrigger: { trigger: sec, start: "top top", end: "+=130%", pin: true, scrub: 0.6 } })
+      .to(inner, { scale: 1.06, duration: .4 })
+      .to(inner, { rotationY: 180, duration: 1, ease: "power2.inOut" })
+      .to(inner, { scale: 1, duration: .4 });
+  },
+
+  jobs(sec) {
+    const badges = sec.querySelectorAll(".badge");
+    const bar = sec.querySelector(".bar i");
+    gsap.set(bar, { scaleX: 0 });
+    const tl = gsap.timeline({ scrollTrigger: { trigger: sec, start: "top top", end: `+=${badges.length * 55 + 30}%`, pin: true, scrub: 0.6 } });
+    badges.forEach((b, i) => {
+      tl.from(b, { x: () => window.innerWidth, y: -60, rotation: 30, duration: 1, ease: "power2.out" })
+        .to(bar, { scaleX: (i + 1) / badges.length, duration: 1, ease: "none" }, "<");
+    });
+  },
+
+  finale(sec) {
+    const thumbs = sec.querySelectorAll(".thumb");
+    const frame = sec.querySelector(".empty");
+    gsap.timeline({ scrollTrigger: { trigger: sec, start: "top top", end: "+=220%", pin: true, scrub: 0.6, invalidateOnRefresh: true } })
+      .from(thumbs, {
+        x: () => gsap.utils.random(-1, 1) * window.innerWidth * .8,
+        y: () => gsap.utils.random(-1, 1) * window.innerHeight * .8,
+        rotation: () => gsap.utils.random(-120, 120), scale: 1.8, opacity: 0,
+        stagger: .07, duration: 1.2, ease: "power2.out",
+      })
+      .from(frame, { scale: 0, rotation: -30, duration: .8, ease: "back.out(1.6)" })
+      .from(sec.querySelector("h2"), { opacity: 0, y: 30, duration: .5 })
+      .to(thumbs, { opacity: .4, duration: .6 }, "<")
+      .to(frame, { scale: 1.2, duration: .8 });
+  },
+};
+
+function heroMotion() {
+  const fig = document.querySelector(".hero-photo");
+  gsap.from(".hero h1", { y: 50, opacity: 0, duration: 1, ease: "power3.out" });
+  gsap.from(fig, { y: -120, rotation: -24, opacity: 0, duration: 1.1, delay: .2, ease: "power3.out" });
+  gsap.fromTo(fig.querySelector(".develop"), { opacity: 1 }, { opacity: 0, duration: 2.6, delay: .9, ease: "power1.out" });
+  gsap.to(fig, { y: 140, rotation: 14, scale: .72, ease: "none",
+    scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true } });
+}
+
+function initMotion() {
+  if (!window.gsap || !window.ScrollTrigger) return; // page stays fully readable without motion
+  gsap.registerPlugin(ScrollTrigger);
+  gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
+    document.documentElement.classList.remove("no-motion");
+    heroMotion();
+    document.querySelectorAll("[data-type]").forEach(sec => MOTION[sec.dataset.type]?.(sec));
+    return () => { document.documentElement.classList.add("no-motion"); placeBus(1); };
+  });
+  document.fonts?.ready.then(() => ScrollTrigger.refresh());
+}
+
+render();
+initMotion();
+</script>
+</body>
+</html>
